@@ -4,6 +4,18 @@ from dotenv import load_dotenv
 from typing import Generator
 from contextlib import contextmanager
 
+class UnexpectedRemoteHostError(Exception):
+    """Custom exception for representing errors generated on the remote server."""
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
+
+class UsefulStrings():
+    def __init__(self) -> None:
+        load_dotenv()
+        self.strongPassword1 = os.getenv('STRONG_PASSWORD_1')
+        self.strongPassword2 = os.getenv('STRONG_PASSWORD_2')
+
 @contextmanager
 def ssh_connection(host_ip:str, username:str, password:str=None, path_to_priv_key:str=None) -> Generator[paramiko.SSHClient, None, None]:
     """Sets up an ssh context that will automatically close if an error occurs.
@@ -48,29 +60,23 @@ def sftp_connection(ssh:paramiko.SSHClient) -> Generator[paramiko.SFTPClient, No
     finally:
         sftp.close()
 
-class UnexpectedRemoteHostError(Exception):
-    """Custom exception for representing errors generated on the remote server."""
-    def __init__(self, message):
-        super().__init__(message)
-        self.message = message
-
-class UsefulStrings():
-    def __init__(self) -> None:
-        load_dotenv()
-        self.strongPassword1 = os.getenv('STRONG_PASSWORD_1')
-        self.strongPassword2 = os.getenv('STRONG_PASSWORD_2')
-
-def execute_command(ssh:paramiko.SSHClient, command:str) -> tuple[str, str]:
+def execute_command(ssh:paramiko.SSHClient, command:str, necessary_inputs:list[str]=None) -> tuple[str, str]:
     """Executes an unprivileged command on a remote host using an ssh session
 
     Args:
         ssh (paramiko.SSHClient): the ssh client session
         command (str): the command to be executed
+        necessary_input (str, optional): any additions that need to be added after 
+        the command is executed. Defaults to None.
 
     Returns:
         tuple[str, str]: output (empty if none) and errors (empty if none)
-    """    
+    """  
     stdin, stdout, stderr = ssh.exec_command(command)
+    if necessary_inputs:
+        for n_input in necessary_inputs:
+            stdin.write(f'{n_input}\n')
+            stdin.flush()
     output = stdout.read().decode()
     errors = stderr.read().decode()
     return output, errors
@@ -92,9 +98,8 @@ def execute_privileged_command(ssh:paramiko.SSHClient, command:str, sudo_passwor
     stdin.write(f'{sudo_password}\n')
     stdin.flush()
     if necessary_inputs:
-        for nec_input in necessary_inputs:
-            print(nec_input)
-            stdin.write(f'{nec_input}\n')
+        for n_input in necessary_inputs:
+            stdin.write(f'{n_input}\n')
             stdin.flush()
     output = stdout.read().decode()
     errors = stderr.read().decode()
@@ -134,15 +139,9 @@ def add_user_if_necessary(ssh:paramiko.SSHClient, user_to_add:str, sudo_password
                 raise UnexpectedRemoteHostError(errors)
 
         # Set the user password
-        stdin, stdout, stderr = ssh.exec_command(f"sudo -S -p '' passwd {user_to_add}")
-        stdin.write(f'{sudo_password}\n')
-        stdin.flush()
+        command = f'passwd {user_to_add}'
         new_password = UsefulStrings().strongPassword1
-        stdin.write(f'{new_password}\n')
-        stdin.write(f'{new_password}\n')
-        stdin.flush()
-        output = stdout.read().decode()
-        errors = stderr.read().decode()
+        output, errors = execute_privileged_command(ssh, command, sudo_password, [new_password, new_password])
         if 'updated successfully' not in errors:
             raise UnexpectedRemoteHostError(errors)
 
