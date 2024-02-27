@@ -140,11 +140,7 @@ def add_user_if_necessary(ssh:paramiko.SSHClient, user_to_add:str, sudo_password
                 raise UnexpectedRemoteHostError(errors)
 
         # Set the user password
-        command = f'passwd {user_to_add}'
-        new_password = UsefulStrings().strongPassword1
-        output, errors = execute_privileged_command(ssh, command, sudo_password, [new_password, new_password])
-        if 'updated successfully' not in errors:
-            raise UnexpectedRemoteHostError(errors)
+        set_user_password(ssh, user_to_add, sudo_password)
 
         # Change the ownership of the user's home directory
         command = f'chown -R {user_to_add}:{user_to_add} /home/{user_to_add}'
@@ -154,6 +150,13 @@ def add_user_if_necessary(ssh:paramiko.SSHClient, user_to_add:str, sudo_password
 
         # Added
         return True
+    
+def set_user_password(ssh:paramiko.SSHClient, user:str, sudo_password:str):
+    command = f'passwd {user}'
+    new_password = UsefulStrings().strongPassword1
+    output, errors = execute_privileged_command(ssh, command, sudo_password, [new_password, new_password])
+    if 'updated successfully' not in errors:
+        raise UnexpectedRemoteHostError(errors)
         
 def copy_file_to_remote_host(path_to_local_file:str, host_ip:str, username:str, sudo_password:str) -> str:
     """Copies a file from the client's computer to the temp folder of the remote host.
