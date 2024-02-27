@@ -11,6 +11,7 @@ class UnexpectedRemoteHostError(Exception):
         self.message = message
 
 class UsefulStrings():
+    """Grabs passwords from the env file, avoiding global variables"""    
     def __init__(self) -> None:
         load_dotenv()
         self.strongPassword1 = os.getenv('STRONG_PASSWORD_1')
