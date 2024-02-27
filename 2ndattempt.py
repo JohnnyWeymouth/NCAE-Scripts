@@ -17,7 +17,6 @@ def copy_file_with_sudo(local_file, remote_host, remote_user, remote_file_path, 
     sftp.put(local_file, temp_remote_file_path)
 
     # Execute sudo command to move the file to the final destination
-        # Execute a sudo command to read the /etc/shadow file
     stdin, stdout, stderr = ssh.exec_command(f"sudo -S -p '' mv {temp_remote_file_path} {remote_file_path}")
     stdin.write(f'{sudo_password}\n')
     stdin.flush()
