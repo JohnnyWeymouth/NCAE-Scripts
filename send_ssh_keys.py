@@ -30,9 +30,6 @@ def set_up_ssh_for_user(ssh:paramiko.SSHClient, designated_user:str, sudo_passwo
 
     
 
-
-
-
     
 if __name__ == '__main__':
     main()
