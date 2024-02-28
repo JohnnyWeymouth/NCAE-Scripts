@@ -11,8 +11,12 @@ def main():
     remote_host_ip = os.getenv('REMOTE_HOST')
     remote_user = os.getenv('REMOTE_USER')
     sudo_password = os.getenv('SUDO_PASSWORD')
+
+    designated_user = ''
+    local_path_of_pub_ssh_key = r''
+
     with ssh_connection(remote_host_ip, remote_user, sudo_password) as ssh:
-        set_up_ssh_for_user(ssh, 'samanthaallen', r'C:\Users\johnn\OneDrive\Desktop\School\NCAE-Scripts\samanthaallen_key.pub', 'abc123')
+        set_up_ssh_for_user(ssh, designated_user, local_path_of_pub_ssh_key, 'abc123')
 
 def set_up_ssh_for_user(ssh:paramiko.SSHClient, designated_user:str, local_path_of_pub_ssh_key:str, sudo_password:str):
     # Add the user, if needed, to the remote host

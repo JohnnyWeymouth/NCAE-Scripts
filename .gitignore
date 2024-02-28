@@ -1,3 +1,4 @@
 SSHKeys
 .env
 deprecated
+__pycache__
