@@ -164,34 +164,49 @@ def recursively_create_dir(ssh:paramiko.SSHClient, dir_path:str, sudo_password:s
     if errors:
         raise UnexpectedRemoteHostError(errors)
     
+def recursively_change_owner(ssh:paramiko.SSHClient, dir_path:str, new_owner, sudo_password:str):
+    command = f'chown -R {new_owner}:{new_owner} {dir_path}'
+    output, errors = execute_privileged_command(ssh, command, sudo_password)
+    if errors:
+        raise UnexpectedRemoteHostError(errors)
+    
 def create_blank_file_with_path(ssh:paramiko.SSHClient, path:str, sudo_password:str):
     # Delete the file (if it exists)
     command = f'rm {path}'
     output, errors = execute_privileged_command(ssh, command, sudo_password)
-    if 'No such file' not in errors:
+    if (errors) and ('No such file' not in errors):
         raise UnexpectedRemoteHostError(errors)
-    
     # Recreate it
     command = f'touch {path}'
     output, errors = execute_privileged_command(ssh, command, sudo_password)
     if errors:
         raise UnexpectedRemoteHostError(errors)
-        
-def copy_file_to_remote_host(path_to_local_file:str, host_ip:str, username:str, sudo_password:str) -> str:
+    
+def change_permissions(ssh:paramiko.SSHClient, path:str, permission_nums:int, sudo_password:str):
+    command = f'chmod {permission_nums} {path}'
+    output, errors = execute_privileged_command(ssh, command, sudo_password)
+    if errors:
+        raise UnexpectedRemoteHostError(errors)
+    
+def copy_file_to_other_file(ssh:paramiko.SSHClient, source_file_path:str, destination_file_path:str, sudo_password:str):
+    command = f'cp -p  {source_file_path} {destination_file_path}'
+    output, errors = execute_privileged_command(ssh, command, sudo_password)
+    if errors:
+        raise UnexpectedRemoteHostError(errors)
+
+# TODO maybe check if the file already exists there and don't overwrite if so
+def copy_file_to_remote_host(ssh:paramiko.SSHClient, path_to_local_file:str) -> str:
     """Copies a file from the client's computer to the temp folder of the remote host.
 
     Args:
+        ssh (paramiko.SSHClient): the ssh client session
         path_to_local_file (str): the path on the client's computer
-        host_ip (str): the ip of the remote host
-        username (str): the username on the remote host
-        sudo_password (str): the sudoer's password on the remote host
 
     Returns:
         str: the remote host file path of the copied file
     """    
-    with ssh_connection(host_ip, username, sudo_password) as ssh:
-        with sftp_connection(ssh) as sftp:
-            file_name = os.path.basename(path_to_local_file)
-            temp_remote_file_path = f"/tmp/{file_name}"
-            sftp.put(path_to_local_file, temp_remote_file_path)
-            return temp_remote_file_path
+    with sftp_connection(ssh) as sftp:
+        file_name = os.path.basename(path_to_local_file)
+        temp_remote_file_path = f"/tmp/{file_name}"
+        sftp.put(path_to_local_file, temp_remote_file_path)
+        return temp_remote_file_path
