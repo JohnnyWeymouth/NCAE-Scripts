@@ -140,7 +140,7 @@ def add_user_if_necessary(ssh:paramiko.SSHClient, user_to_add:str, sudo_password
                 raise UnexpectedRemoteHostError(errors)
 
         # Set the user password
-        set_user_password(ssh, user_to_add, sudo_password)
+        reset_user_password(ssh, user_to_add, sudo_password)
 
         # Change the ownership of the user's home directory
         command = f'chown -R {user_to_add}:{user_to_add} /home/{user_to_add}'
@@ -151,11 +151,30 @@ def add_user_if_necessary(ssh:paramiko.SSHClient, user_to_add:str, sudo_password
         # Added
         return True
     
-def set_user_password(ssh:paramiko.SSHClient, user:str, sudo_password:str):
+def reset_user_password(ssh:paramiko.SSHClient, user:str, sudo_password:str):
     command = f'passwd {user}'
     new_password = UsefulStrings().strongPassword1
     output, errors = execute_privileged_command(ssh, command, sudo_password, [new_password, new_password])
     if 'updated successfully' not in errors:
+        raise UnexpectedRemoteHostError(errors)
+    
+def recursively_create_dir(ssh:paramiko.SSHClient, dir_path:str, sudo_password:str):
+    command = f'mkdir -p {dir_path}'
+    output, errors = execute_privileged_command(ssh, command, sudo_password)
+    if errors:
+        raise UnexpectedRemoteHostError(errors)
+    
+def create_blank_file_with_path(ssh:paramiko.SSHClient, path:str, sudo_password:str):
+    # Delete the file (if it exists)
+    command = f'rm {path}'
+    output, errors = execute_privileged_command(ssh, command, sudo_password)
+    if 'No such file' not in errors:
+        raise UnexpectedRemoteHostError(errors)
+    
+    # Recreate it
+    command = f'touch {path}'
+    output, errors = execute_privileged_command(ssh, command, sudo_password)
+    if errors:
         raise UnexpectedRemoteHostError(errors)
         
 def copy_file_to_remote_host(path_to_local_file:str, host_ip:str, username:str, sudo_password:str) -> str:
